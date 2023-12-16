@@ -18,6 +18,8 @@
 #include <memory>
 #include <set>
 #include <vector>
+#include <string>
+#include <stdexcept>
 
 #include <boost/static_assert.hpp>
 

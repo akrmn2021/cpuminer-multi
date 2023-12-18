@@ -82,6 +82,7 @@ Dependencies
  * openssl libcrypto https://www.openssl.org/
  * pthreads
  * zlib (for curl/ssl)
+ * libsodium (for equihash support)
 
 Download
 ========

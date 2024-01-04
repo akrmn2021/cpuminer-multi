@@ -110,7 +110,7 @@ _OR_
 ```
 cd equihash
 make
-export PATH="/path/to/cpuminer-multi":"$PATH"
+export PATH="/path/to/cpuminer-multi/equihash":"$PATH"
 ```
 
 ### Cryptonight Optimizations

@@ -646,9 +646,9 @@ int scanhash_equihash(int thr_id, struct work *work, uint32_t max_nonce, uint64_
 	uint32_t *pdata = work->data;
 	uint32_t *ptarget = work->target;
 	uint32_t * ptargettr = malloc(8*sizeof(uint32_t));
-	const uint32_t first_nonce = pdata[27];
+	const uint32_t first_nonce = pdata[28];
 	const uint32_t Htarg = ptarget[7];
-	uint32_t n = pdata[27] - 1;
+	uint32_t n = pdata[28];
 	uint32_t _ALIGN(128) endiandata[35];
 
 	unsigned char full_data[1488];
@@ -674,13 +674,13 @@ int scanhash_equihash(int thr_id, struct work *work, uint32_t max_nonce, uint64_
 	    randomDataLen += res;
 	  }
 	  
-	  pdata[27] = *(uint32_t*)data; //tmp
-	  be32enc(&endiandata[27], pdata[27]);
+	  pdata[28] = *(uint32_t*)data; //tmp
+	  be32enc(&endiandata[28], pdata[28]);
 	  for (int j=0; j<4; j++) {
-	    sprintf(cmd+11+27*8+2*j,"%02x",*((unsigned char *)endiandata+27*4+j));
-	    full_data[27*4+j] = *((unsigned char *)endiandata+27*4+j);
+	    sprintf(cmd+11+28*8+2*j,"%02x",*((unsigned char *)endiandata+28*4+j));
+	    full_data[28*4+j] = *((unsigned char *)endiandata+28*4+j);
 	  }
-	  cmd[11+27*8+2*4] = 48;
+	  cmd[11+28*8+2*4] = 48;
 	  strcat(cmd," ");
 	  for (int i=0; i<32; i++) sprintf(cmd+292+2*i,"%02x",((uchar*)ptarget)[i]);
 	  printf("thr %d cmd = %s\n",thr_id,cmd);
@@ -690,12 +690,15 @@ int scanhash_equihash(int thr_id, struct work *work, uint32_t max_nonce, uint64_
 	    for (int i=0; i<1487; i++) {
 	      sscanf(buf+2*i,"%2hhx",full_data+i);
 	    }
+	    for (int i=0; i<32; i++) {
+	      sscanf(buf+2*i,"%2hhx",hash+i);
+	    }
 	    //sha256d((unsigned char *)hash,full_data,1487);
-	    /*printf("hash = ");
+	    printf("hash = ");
 	    for (int i=0; i<32; i++) {
 	      printf("%02x",((uchar*)hash)[i]);
 	    }
-	    printf("\n");*/
+	    printf("\n");
 	    //if (fulltest(hash, ptarget)) {
 	    printf("thr %d good hash with header\n",thr_id);
 	    /*sha256d((unsigned char *)hash,full_data,1487);
@@ -720,6 +723,6 @@ int scanhash_equihash(int thr_id, struct work *work, uint32_t max_nonce, uint64_
 	} while (likely(n < max_nonce && !work_restart[thr_id].restart));
 	
 	*hashes_done = 10;
-	pdata[27] += 10;
+	pdata[28] += 10;
 	return 0;
 }

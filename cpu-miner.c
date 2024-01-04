@@ -2036,6 +2036,10 @@ static bool wanna_mine(int thr_id)
 			wkcmp_offset = 32 + 16;
 			wkcmp_sz = 32; // 35 * 4
 		}
+		else if (opt_algo == ALGO_EQUIHASH) {
+		  nonce_oft = 28*sizeof(uint32_t);
+		  wkcmp_sz = nonce_oft;
+		}
 
 		if (jsonrpc_2) {
 			wkcmp_sz = nonce_oft = 39;

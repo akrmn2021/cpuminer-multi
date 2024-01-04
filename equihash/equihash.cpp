@@ -26,6 +26,8 @@
 #include <boost/optional.hpp>
 #include "equi_miner.h"
 
+bool opt_debug = false;
+
 void sha256_init(uint32_t *state);
 void sha256_transform(uint32_t *state, const uint32_t *block, int swap);
 void sha256d(unsigned char *hash, const unsigned char *data, int len);
@@ -797,6 +799,21 @@ template bool Equihash<48,5>::OptimisedSolve(const eh_HashState& base_state,
                                              const std::function<bool(EhSolverCancelCheck)> cancelled);
 template bool Equihash<48,5>::IsValidSolution(const eh_HashState& base_state, std::vector<unsigned char> soln);
 
+static inline void be32enc(void *pp, uint32_t x)
+{
+	uint8_t *p = (uint8_t *)pp;
+	p[3] = x & 0xff;
+	p[2] = (x >> 8) & 0xff;
+	p[1] = (x >> 16) & 0xff;
+	p[0] = (x >> 24) & 0xff;
+}
+
+void bin2hex(char *s, const unsigned char *p, size_t len)
+{
+	for (size_t i = 0; i < len; i++)
+		sprintf(s + (i * 2), "%02x", (unsigned int) p[i]);
+}
+
 bool fulltest(const uint32_t *hash, const uint32_t *target)
 {
   int i;
@@ -812,19 +829,36 @@ bool fulltest(const uint32_t *hash, const uint32_t *target)
       break;
     }
   }
+
+  if (opt_debug) {
+    uint32_t hash_be[8], target_be[8];
+    char hash_str[65], target_str[65];
+    
+    for (i = 0; i < 8; i++) {
+      be32enc(hash_be + i, hash[7 - i]);
+      be32enc(target_be + i, target[7 - i]);
+    }
+    bin2hex(hash_str, (unsigned char *)hash_be, 32);
+    bin2hex(target_str, (unsigned char *)target_be, 32);
+    
+    printf("DEBUG: %s\nHash:   %s\nTarget: %s\n",
+	   rc ? "hash <= target"
+	   : "hash > target (false positive)",
+	   hash_str,
+	   target_str);
+  }
+  
   return rc;
 }
 
 int main (int argc, char ** argv) {
 
-  if (argc < 2) {
+  if (argc < 3) {
     return 1;
   }
   
   unsigned int n = 200;
   unsigned int k = 9;
-  crypto_generichash_blake2b_state state;
-  EhInitialiseState(n, k, state);
   char * ehinput = argv[1];
   char * target_hex = argv[2];
   unsigned char ss[1487];
@@ -846,13 +880,16 @@ int main (int argc, char ** argv) {
   return 0;*/
 
   const int max_nonce = 10;
-  uint32_t nonce = ((uint32_t*)ss)[27];
+  int nonce_count = 0;
+  uint32_t nonce = ((uint32_t*)ss)[28];
   char * log_file = (char *)malloc(50);
   sprintf(log_file,"equihash/log-%d",nonce);
   //std::ofstream ofs (log_file,std::ofstream::out);
   //ofs << "ehinput is " << ehinput;
   do {
     //printf("nonce=%d\n",nonce);
+    crypto_generichash_blake2b_state state;
+    EhInitialiseState(n, k, state);
     crypto_generichash_blake2b_update(&state,&ss[0],140);
     equi eq(1);
     eq.setstate(&state);
@@ -868,7 +905,7 @@ int main (int argc, char ** argv) {
     //printf("nsols = %u\n",eq.nsols);
     if (eq.nsols < 5) {
       for (size_t s = 0; s < eq.nsols; s++) {
-	//printf("Check solution %u\n", s+1);
+	//printf("Check solution %lu\n", s+1);
 	std::vector<eh_index> index_vector(PROOFSIZE);
 	for (size_t i = 0; i < PROOFSIZE; i++) {
 	  index_vector[i] = eq.sols[s][i];
@@ -887,7 +924,7 @@ int main (int argc, char ** argv) {
 	for (int i=0; i<sol_char.size(); i++) {
 	  ss[143+i] = sol_char[i];
 	}
-	memcpy(ss,ss,1487);
+	//memcpy(ss,ss,1487);
 	unsigned char hash [32];
 	sha256d(hash,ss,1487);
 
@@ -895,9 +932,17 @@ int main (int argc, char ** argv) {
 
 	if (fulltest((uint32_t*)hash,(uint32_t*)target)) {
 	  for (int i=0; i<1487; i++) printf("%02x",ss[i]);
+	  for (int i=0; i<32; i++) printf("%02x",hash[i]);
 	  printf("\n");
 	  return 0;
 	}
+
+	/*printf("high hash: ");
+	for (int i=0; i<140; i++) printf("%02x",ss[i]);
+	printf("\n");
+	printf(" hash ");
+	for (int i=0; i<32; i++) printf("%02x",hash[i]);
+	printf("\n");*/
 	  
 	/*printf("fd4005");
 	  for (int i=0; i<sol_char.size(); i++) {
@@ -907,8 +952,9 @@ int main (int argc, char ** argv) {
       }
     }
     nonce++;
-    ((uint32_t*)ss)[27] = nonce; // actual nonce is swab32...
-  } while (nonce<max_nonce);
+    nonce_count++;
+    ((uint32_t*)ss)[28] = nonce; // actual nonce is swab32...
+  } while (nonce_count<max_nonce);
   //ofs.close();
   return 0;
 }
